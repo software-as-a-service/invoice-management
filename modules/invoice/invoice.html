@@ -1,0 +1,99 @@
+<section>
+      VmInclude:__BASE__/vmiis/Common-Code/frame/excel_v2.html
+</section>
+<script>
+    function F__ID(){
+        //-------------------------------------
+        _fields="Print|UID,Client,Invoice_Number|UID,Issue_Date,Due_Date,Items|UID,GST_Amount,Total_Amount,Payments|UID,Total_Payment,Balance";
+        _fields+=",Submit Date|DateTime,Submitted by|Author";
+        //-------------------------------------
+        VmInclude:__BASE__/vmiis/Common-Code/frame/excel_v2.js
+        VmInclude:__BASE__/vmiis/Common-Code/style/ease-in-out.js
+        //-------------------------------------
+        $('#D__ID').on('load',function(){  _set_req(); _request_data(); })
+        $('#D__ID').on('back',function(){  _set_req(); _request_data(); })
+        //-------------------------------------
+        _columns_process=function(columns){
+            columns[0]={data:'UID', width:60,renderer:function(instance, td, row, col, prop, value, cellProperties){
+                if(value===null || value===undefined){ td.innerHTML=""; return td;}
+                td.innerHTML="<u style='cursor:pointer'>Invoice</u>";
+                $(td).find('u').on('click',function(){
+                    $vm.load_module_by_name('invoice_print',$vm.root_layout_content_slot,{invoice_uid:value});
+                });
+                return td;
+            }};
+            //-------------------------------------
+            columns[1]={data:'Client',type: 'autocomplete',trimDropdown:false,source:function (query, process){
+                var client_pid=$vm.module_list['client'][0];
+                var sqlA="with tb as (select Item=@('Client_Name'),Value=UID from [FORM-"+client_pid+"])";
+                sqlA+=" select top 10 Item,Value from tb where Item like '%'+@S1+'%' ";
+                $vm.read_record_auto({query:query,process:process,sql:sqlA,minLength:0,callback:function(nv){auto_uid=nv;}});
+            }};
+            //-------------------------------------
+            columns[2]={data:'UID', readOnly:true};
+            //-------------------------------------
+            columns[3]={data:'Issue_Date',width:120,type: 'date',format: 'DD/MM/YYYY',correctFormat:true};
+            //-------------------------------------
+            columns[4]={data:'Due_Date',width:120,type: 'date',format: 'DD/MM/YYYY',correctFormat:true};
+            //-------------------------------------
+            columns[5]={data:'UID', width:80,renderer:function(instance, td, row, col, prop, value, cellProperties){
+                if(value===null){ td.innerHTML=""; return td;}
+                td.innerHTML="<u style='cursor:pointer'>Items...</u>";
+                $(td).find('u').on('click',function(){
+                    $vm.load_module_by_name('invoice_item',$vm.root_layout_content_slot,{sql_where:'puid='+value,puid:value});
+                });
+                return td;
+            }};
+            //-------------------------------------
+            columns[6]={data:'GST_Amount',type: 'numeric',format: '$ 0,000.00', readOnly:true};
+            columns[7]={data:'Total_Amount',type: 'numeric',format: '$ 0,000.00', readOnly:true};
+            //-------------------------------------
+            columns[8]={data:'UID', width:80,renderer:function(instance, td, row, col, prop, value, cellProperties){
+                if(value===null){ td.innerHTML=""; return td;}
+                td.innerHTML="<u style='cursor:pointer'>Pay...</u>";
+                $(td).find('u').on('click',function(){
+                    $vm.load_module_by_name('invoice_payment_item',$vm.root_layout_content_slot,{sql_where:'puid='+value,puid:value});
+                });
+            }};
+            columns[9]={data:'Total_Payment',type: 'numeric',format: '$ 0,000.00', readOnly:true};
+            columns[10]={data:'Balance',type: 'numeric',format: '$ 0,000.00', readOnly:true};
+        }
+        //-------------------------------------
+        var auto_uid={}; // be filled by autocomplete
+        _after_change=function(record,C){
+            if(C==='Client'){
+                record.client_uid=auto_uid[record.Client];
+            }
+        };
+        //-------------------------------------
+        _pre_data_process=function(){ //caculate balance
+            for(var i=0;i<_records.length;i++){
+                if(_records[i].Total_Payment===undefined) _records[i].Total_Payment=0;
+                if(_records[i].Total_Amount===undefined) _records[i].Total_Amount=0;
+                _records[i].Balance=parseFloat(_records[i].Total_Payment)-parseFloat(_records[i].Total_Amount);
+            }
+        };
+        //-------------------------------------
+        _new_pre_data_process=function(){ //set issue and due date
+            $("#excel__ID").handsontable("setDataAtCell", 0, 3, date_to_string_dmy(date_today()));
+            $("#excel__ID").handsontable("setDataAtCell", 0, 4, date_to_string_dmy(date_today()));
+        };
+        //-------------------------------------
+        _before_submit=function(record,dbv){ //set client uid as puid
+            if(record.client_uid!==undefined) dbv.PUID=record.client_uid;
+            return true;
+        };
+        //-------------------------------------
+        _after_submit=function(I,res,n){    //add uid to the row
+            if(res.uid!==undefined){
+                $("#excel__ID").handsontable("setDataAtCell", 0, 0, res.uid);
+                $("#excel__ID").handsontable("setDataAtCell", 0, 5, res.uid);
+                $("#excel__ID").handsontable("setDataAtCell", 0, 6, res.uid);
+            }
+        };
+        //-------------------------------------
+    }
+</script>
+<style>
+    VmInclude:__BASE__/vmiis/Common-Code/style/default.css
+</style>

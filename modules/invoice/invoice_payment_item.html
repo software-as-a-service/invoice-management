@@ -1,0 +1,74 @@
+<section>
+    VmInclude:__BASE__/vmiis/Common-Code/frame/excel_v2.html
+</section>
+<script>
+    function F__ID(){
+        //-------------------------------------
+        var invoice_pid=$vm.module_list['invoice'][0];
+        var invoice_payment_item_pid=$vm.module_list['invoice_payment_item'][0];
+        //-------------------------------------
+        _fields="Invoice Number|PUID,Payment Date|i2Date,Method|i2Method,Notes|i2Notes,Amount|i2Amount";
+        _fields+=",Submit Date|DateTime,Submitted by|Author";
+        //-------------------------------------
+        VmInclude:__BASE__/vmiis/Common-Code/frame/excel_v2.js
+        VmInclude:__BASE__/vmiis/Common-Code/style/ease-in-out.js
+        //-------------------------------------
+        $('#D__ID').on('load',function(){
+//alert('a')
+            _set_req(); _request_data(); })
+        //-------------------------------------
+        _columns_process=function(columns){
+            columns[0]={data:'PUID', readOnly:true};
+            columns[1]={data:'i2Date',width:120,type: 'date',format: 'DD/MM/YYYY',correctFormat:true};
+            columns[2]={data:'i2Method',type:'dropdown',trimDropdown:false,source:[
+                "---","Cash","Credit Card","Direct Credit"
+            ]};
+            columns[4]={data:'i2Amount',type:'numeric',format:'$ 0,000.00'};
+        }
+        //-------------------------------------
+        _before_submit=function(record,dbv){
+            if($vm.vm['__ID'].op.puid===undefined){
+                alert("No parent");
+                return false;
+            }
+            var v;
+            dbv.V1='0'; v=record.i2Amount; if(v!=='') dbv.V1=parseFloat(v).toFixed(2);
+            dbv.DT1=record.i2Date;
+    		dbv.PPID=invoice_pid;
+    		dbv.PUID=$vm.vm['__ID'].op.puid;
+
+    	    jQuery.ajaxSetup({async:false});
+    		var req_data={cmd:"modify_record_by_ppid_and_puid",ppid:invoice_pid,puid:$vm.vm['__ID'].op.puid,data:{Total_Payment:'-1'},dbv:{V3:'-1'} };
+            $VmAPI.request({data:req_data,callback:function(res){}});
+    	    jQuery.ajaxSetup({async:true});
+
+            return true;
+        };
+        //-------------------------------------
+        _after_submit=function(I,res,n,dbv){
+            jQuery.ajaxSetup({async:false});
+            var sql="with tb as (select V1 from [TABLE-"+invoice_payment_item_pid+"] where PUID ="+$vm.vm['__ID'].op.puid+") ";
+            sql+="select Total=Sum(V1) from tb";
+            var req_data={cmd:'query_records',sql:sql};
+            $VmAPI.request({data:req_data,callback:function(res){
+                var Total=res.records[0].Total;
+    		    req_data={cmd:"modify_record_by_ppid_and_puid",ppid:invoice_pid,puid:$vm.vm['__ID'].op.puid,data:{Total_Payment:Total},dbv:{V3:Total} };
+                $VmAPI.request({data:req_data,callback:function(res){}});
+            }});
+    	    jQuery.ajaxSetup({async:true});
+        };
+        //-------------------------------------
+        _new_pre_data_process=function(){ //set invoice number and payment date
+            if($vm.vm['__ID'].op.puid!==undefined) $("#excel__ID").handsontable("setDataAtCell", 0, 0, $vm.vm['__ID'].op.puid);
+            $("#excel__ID").handsontable("setDataAtCell", 0, 1, date_to_string_dmy(date_today()));
+        };
+        //-------------------------------------
+        _set_req=function(){
+            _set_req_with_sql_where();
+        }
+        //-------------------------------------
+    }
+</script>
+<style>
+    VmInclude:__BASE__/vmiis/Common-Code/style/default.css
+</style>
