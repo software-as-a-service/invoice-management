@@ -14,7 +14,6 @@
         VmInclude:__BASE__/vmiis/Common-Code/style/ease-in-out.js
         //-------------------------------------
         $('#D__ID').on('load',function(){
-//alert('a')
             _set_req(); _request_data(); })
         //-------------------------------------
         _columns_process=function(columns){
@@ -64,6 +63,14 @@
         };
         //-------------------------------------
         _set_req=function(){
+            //-------------------
+            $('#new__ID').hide();
+            $('#save__ID').hide();
+            if($vm.vm['__ID'].op.sql_where!==""){
+                $('#new__ID').show();
+                $('#save__ID').show();
+            }
+            //-------------------
             _set_req_with_sql_where();
         }
         //-------------------------------------
